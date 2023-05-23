@@ -11,21 +11,47 @@ import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
-import java.io.InputStreamReader;
-import java.io.StringWriter;
+import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.net.URLEncoder;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 public class Main {
+
+    private static String filePath = "location_name_table.csv";
+    private static BufferedReader br = null;
+    private static String line;
+
+
     public static void main(String[] args) throws IOException {
 
+
         ArrayList<Integer> temp = new ArrayList<>();
+
+        GpsToLocal gpsToLocal = new GpsToLocal();
+        GpsToLocal.LatXLngY gridLocation = gpsToLocal.convertGRID_GPS( 36.351914, 127.3007893);
+
+
+
+        try{
+            br = new BufferedReader(new FileReader(filePath));
+            line = br.readLine();
+            System.out.println(line);
+            while((line = br.readLine()) != null) {
+                String[] line_temp = line.split(",");
+                if(Integer.parseInt(line_temp[0]) == gridLocation.x && Integer.parseInt(line_temp[1]) == gridLocation.y) {
+                    System.out.println(line_temp[2]);
+                    break;
+                }
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+
+
+
+
 
         try {
             String url = "http://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst";
@@ -34,10 +60,10 @@ public class Main {
             String numOfRows = "290";
             // 12 * 24 + 2(최고,최저기온상태) = 290
             String dataType = "XML";
-            String base_data = findBaseDay();
-            String base_time = "2300";
-            String nx = "55";
-            String ny = "127";
+            String base_data = findBaseTime()[0];
+            String base_time = findBaseTime()[1];
+            String nx = String.valueOf(gridLocation.x);
+            String ny = String.valueOf(gridLocation.y);
 
             String final_url = url + "?serviceKey=" + serviceKey + "&pageNo=" + pageNo + "&numOfRows=" + numOfRows + "&dataType=" + dataType + "&base_date=" + base_data + "&base_time=" + base_time + "&nx=" + nx + "&ny=" + ny;
 
@@ -84,8 +110,9 @@ public class Main {
                         }
                         if(item.item(2).getTextContent().equals("REH")) {
                             hour_reh = Integer.parseInt(item.item(5).getTextContent());
-                            System.out.print("\t 습도 : " + hour_reh + "%");
+                            System.out.print("\t 습도 : " + hour_reh + "%\n");
                         }
+
                     }
                 }
             }
@@ -101,10 +128,16 @@ public class Main {
         }
     }
 
-    public static String findBaseDay() {
-        LocalDate now = LocalDate.now().minusDays(1);
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd");
-        String formatedNow = now.format(formatter);
+    public static String[] findBaseTime() {
+        long milli_now = System.currentTimeMillis();
+        Date date_now = new Date(milli_now);
+        SimpleDateFormat yearMonthDay = new SimpleDateFormat("yyyyMMdd");
+        String formatYearMonthDay = yearMonthDay.format(date_now);
+        SimpleDateFormat hour = new SimpleDateFormat("HH00");
+        String formatHour = hour.format(date_now);
+
+        String[] formatedNow = {formatYearMonthDay, formatHour};
+
         return formatedNow;
     }
 
